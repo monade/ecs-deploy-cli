@@ -1,0 +1,63 @@
+aws_profile_id ENV['AWS_PROFILE_ID']
+aws_region ENV['AWS_REGION']
+
+stage ENV['CURRENT_STAGE']
+repository ENV['REPO_URL']
+
+container :base_container do
+  load_envs 'envs/base.yml'
+  load_envs 'envs/production.yml'
+  secret key: 'RAILS_MASTER_KEY', value: 'RAILS_MASTER_KEY'
+  working_directory '/app'
+  cloudwatch 'adcontrol'
+end
+
+container :web, extends: :base_container do
+  cpu 512
+  memory limit: 3584, reservation: 3584
+  command 'bundle', 'exec', 'puma', '-C', 'config/puma.rb'
+
+  expose host_port: 0, protocol: 'tcp', container_port: 3000
+end
+
+container :worker, extends: :base_container do
+  cpu 1536
+  memory limit: 3584, reservation: 3584
+  command 'bundle', 'exec', 'shoryuken', '-C', 'config/shoryuken.yml', '-R'
+end
+
+container :cron, extends: :base_container do
+  command 'rails', 'runner'
+end
+
+task :'adcontrol-cron' do
+  containers :cron
+  cpu 256
+  memory 1024
+
+  tag 'product', 'adcontrol'
+end
+
+task :adcontrol do
+  containers :web, :worker
+  cpu 2048
+  memory 3584
+
+  tag 'product', 'adcontrol'
+end
+
+service :'adcontrol-service' do
+  task :adcontrol
+end
+
+cron :adalytics_alerts do
+  task :adcontrol_cron
+end
+
+cron :certification_alerts do
+  task :adcontrol_cron
+end
+
+cron :concentration_alerts do
+  task :adcontrol_cron
+end
