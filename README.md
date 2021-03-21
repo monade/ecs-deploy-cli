@@ -22,21 +22,22 @@ First, define a ECSFile in your project, to design your ECS cluster.
 
 Example of a Rails app on ECS:
 ```ruby
-aws_profile_id ENV['AWS_PROFILE_ID']
-aws_region ENV['AWS_REGION']
+aws_region ENV.fetch('AWS_REGION', 'eu-central-1')
 
-repository ENV['REPO_URL']
-version ENV['CURRENT_VERSION']
+# Used to create ARNs
+aws_profile_id '123123'
 
-cluster ''
+# Defining the cluster name
+cluster 'yourproject-cluster'
 
 # This is used as a template for the next two containers, it will not be used inside a task
 container :base_container do
+  image "#{ENV['REPO_URL']}:#{ENV['CURRENT_VERSION']}"
   load_envs 'envs/base.yml'
   load_envs 'envs/production.yml'
-  secret key: 'RAILS_MASTER_KEY', value: 'railsMasterKey' # Taking the secret from AWS System Manager
+  secret key: 'RAILS_MASTER_KEY', value: 'railsMasterKey' # Taking the secret from AWS System Manager with name "arn:aws:ssm:__AWS_REGION__:__AWS_PROFILE_ID__:parameter/railsMasterKey"
   working_directory '/app'
-  cloudwatch 'yourproject' # Configuring cloudwatch logs
+  cloudwatch_logs 'yourproject' # Configuring cloudwatch logs
 end
 
 # The rails web application
@@ -58,6 +59,8 @@ end
 # A container to exec cron jobs
 container :cron, extends: :base_container do
   command 'rails', 'runner'
+
+  requires_compatibilities ['FARGATE']
 end
 
 # The main task, having two containers
@@ -79,6 +82,8 @@ task :'yourproject-cron' do
   containers :cron
   cpu 256
   memory 1024
+  execution_role 'ecsTaskExecutionRole'
+  network_mode 'awsvpc'
 
   tag 'product', 'yourproject'
 end

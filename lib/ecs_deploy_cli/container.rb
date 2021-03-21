@@ -36,7 +36,7 @@ module EcsDeployCli
       _options.merge!(other_options)
     end
 
-    def cloudwatch(value)
+    def cloudwatch_logs(value)
       _options[:log_configuration] = {
         log_driver: 'awslogs',
         options: {
@@ -49,7 +49,6 @@ module EcsDeployCli
 
     def as_definition
       {
-        image: "#{@config[:repository]}:#{@config[:version]}",
         memory_reservation: nil,
         essential: true
       }.merge(_options)

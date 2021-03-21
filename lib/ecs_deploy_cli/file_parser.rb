@@ -2,10 +2,6 @@
 
 module EcsDeployCli
   class FileParser
-    def version(version)
-      config[:version] = version
-    end
-
     def aws_profile_id(value)
       config[:aws_profile_id] = value
     end
@@ -16,10 +12,6 @@ module EcsDeployCli
 
     def stage(stage)
       config[:stage] = stage
-    end
-
-    def repository(repository)
-      config[:repository] = repository
     end
 
     def container(container, extends: nil, &block)
@@ -97,7 +89,7 @@ module EcsDeployCli
 
     def ensure_required_params!
       [
-        :aws_profile_id, :aws_region, :repository, :version, :cluster
+        :aws_profile_id, :aws_region, :cluster
       ].each { |key| raise "Missing required parameter #{key}" unless config[key] }
     end
 
