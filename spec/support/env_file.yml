@@ -1,0 +1,5 @@
+- name: 'RAILS_ENV'
+  value: 'production'
+
+- name: 'API_KEY'
+  value: '123123123'

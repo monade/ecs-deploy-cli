@@ -14,6 +14,11 @@ Simply add the gem to your Gemfile
   gem 'ecs-deploy-cli', github: 'monade/ecs-deploy-cli'
 ```
 
+Or install it globally to use it as a cli:
+```bash
+  $ gem install ecs-deploy-cli
+```
+
 ## Usage
 
 First, define a ECSFile in your project, to design your ECS cluster.
@@ -102,19 +107,26 @@ cron :scheduled_emails do
 end
 ```
 
-Now create your deploy script:
+Now you can run the commands from the CLI.
+
+For instance, you can deploy all services:
+```bash
+  $ ecs-deploy deploy-services
+```
+
+You can also use it as an API:
 ```ruby
 require 'ecs_deploy_cli'
 
-configuration = EcsDeployCli::FileParser.load('ECSFile')
+parser = EcsDeployCli::DSL::Parser.load('ECSFile')
 # This will update all your services and tasks to fit the new configuration
-configuration.apply!
+runner = EcsDeployCli::Runner.new(parser)
+runner.update_services!
 ```
 
 ### TODOs
 
 - Scheduled tasks implementation
+- SSH to ec2 instances
 - More configuration options
 - Create the service if not present
-- An actual CLI using Thor
-- Specs

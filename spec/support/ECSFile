@@ -1,17 +1,22 @@
+aws_region ENV.fetch('AWS_REGION', 'eu-central-1')
+
+# Used to create ARNs
 aws_profile_id ENV['AWS_PROFILE_ID']
-aws_region ENV['AWS_REGION']
 
-stage ENV['CURRENT_STAGE']
-repository ENV['REPO_URL']
+# Defining the cluster name
+cluster 'yourproject-cluster'
 
+# This is used as a template for the next two containers, it will not be used inside a task
 container :base_container do
-  load_envs 'envs/base.yml'
-  load_envs 'envs/production.yml'
-  secret key: 'RAILS_MASTER_KEY', value: 'RAILS_MASTER_KEY'
+  image "#{ENV['REPO_URL']}:#{ENV['CURRENT_VERSION']}"
+  load_envs 'spec/support/env_file.yml'
+  load_envs 'spec/support/env_file.ext.yml'
+  secret key: 'RAILS_MASTER_KEY', value: 'railsMasterKey' # Taking the secret from AWS System Manager with name "arn:aws:ssm:__AWS_REGION__:__AWS_PROFILE_ID__:parameter/railsMasterKey"
   working_directory '/app'
-  cloudwatch 'adcontrol'
+  cloudwatch_logs 'yourproject' # Configuring cloudwatch logs
 end
 
+# The rails web application
 container :web, extends: :base_container do
   cpu 512
   memory limit: 3584, reservation: 3584
@@ -20,44 +25,54 @@ container :web, extends: :base_container do
   expose host_port: 0, protocol: 'tcp', container_port: 3000
 end
 
+# The rails job worker
 container :worker, extends: :base_container do
   cpu 1536
   memory limit: 3584, reservation: 3584
   command 'bundle', 'exec', 'shoryuken', '-C', 'config/shoryuken.yml', '-R'
 end
 
+# A container to exec cron jobs
 container :cron, extends: :base_container do
   command 'rails', 'runner'
+
+  requires_compatibilities ['FARGATE']
 end
 
-task :'adcontrol-cron' do
-  containers :cron
-  cpu 256
-  memory 1024
-
-  tag 'product', 'adcontrol'
-end
-
-task :adcontrol do
+# The main task, having two containers
+task :yourproject do
   containers :web, :worker
   cpu 2048
   memory 3584
 
-  tag 'product', 'adcontrol'
+  tag 'product', 'yourproject'
 end
 
-service :'adcontrol-service' do
-  task :adcontrol
+# The main service
+service :'yourproject-service' do
+  task :yourproject
 end
 
-cron :adalytics_alerts do
-  task :adcontrol_cron
+# A task for cron jobs
+task :'yourproject-cron' do
+  containers :cron
+  cpu 256
+  memory 1024
+  execution_role 'ecsTaskExecutionRole'
+  network_mode 'awsvpc'
+
+  tag 'product', 'yourproject'
 end
 
-cron :certification_alerts do
-  task :adcontrol_cron
-end
-
-cron :concentration_alerts do
-  task :adcontrol_cron
+# Scheduled tasks using Cloudwatch Events / Eventbridge
+cron :scheduled_emails do
+  task :'yourproject-cron' do
+    # Overrides
+    container :web do
+      command 'rails', 'cron:exec'
+    end
+  end
+  # Examples:
+  # every 1.hour
+  run_at '0 * * * ? *'
 end

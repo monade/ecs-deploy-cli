@@ -7,16 +7,18 @@ Gem::Specification.new do |s|
   s.name        = 'ecs_deploy_cli'
   s.version     = EcsDeployCli::VERSION
   s.date        = '2021-03-31'
-  s.summary     = "A Command line interface to make ECS deploys more simple"
-  s.description = "A Command line interface to make ECS deploys more simple"
-  s.authors     = ['Mònade']
+  s.summary     = "A command line interface to make ECS deployments easier"
+  s.description = "Declare your cluster structure in a ECSFile and use the CLI to run deploys and monitor its status."
+  s.authors     = ['Mònade', 'ProGM']
   s.email       = 'team@monade.io'
   s.files = Dir['lib/**/*']
   s.test_files = Dir['spec/**/*']
   s.required_ruby_version = '>= 2.5.0'
   s.homepage    = 'https://rubygems.org/gems/ecs_deploy_cli'
   s.license     = 'MIT'
+  s.executables << 'ecs-deploy'
   s.add_dependency 'activesupport', ['>= 5', '< 7']
+  s.add_dependency 'thor'
   s.add_dependency 'aws-sdk-ecs'
   s.add_development_dependency 'rspec', '~> 3'
   s.add_development_dependency 'rubocop'
