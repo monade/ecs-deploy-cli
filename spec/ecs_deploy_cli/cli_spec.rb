@@ -20,6 +20,17 @@ describe EcsDeployCli::CLI do
       expect { described_class.start(['version']) }.to output(/Version #{EcsDeployCli::VERSION}/).to_stdout
     end
 
+    it 'runs validate' do
+      expect { described_class.start(['validate', '--file', 'spec/support/ECSFile']) }.to output(/Your ECSFile looks fine! 🎉/).to_stdout
+    end
+
+    it 'runs deploy' do
+      expect(runner).to receive(:update_crons!)
+      expect(runner).to receive(:update_services!).with(timeout: 500)
+      expect_any_instance_of(described_class).to receive(:runner).at_least(:once).and_return(runner)
+      expect { described_class.start(['deploy', '--file', 'spec/support/ECSFile']) }.to output(/[WARNING]/).to_stdout
+    end
+
     it 'runs deploy-services' do
       expect(runner).to receive(:update_services!)
       expect_any_instance_of(described_class).to receive(:runner).and_return(runner)
@@ -27,13 +38,17 @@ describe EcsDeployCli::CLI do
     end
 
     it 'runs ssh' do
-      # described_class.start(['ssh', '--file', 'spec/support/ECSFile'])
-      skip 'TODO: Implement feature'
+      expect(runner).to receive(:ssh)
+      expect_any_instance_of(described_class).to receive(:runner).and_return(runner)
+
+      described_class.start(['ssh', '--file', 'spec/support/ECSFile'])
     end
 
     it 'runs deploy-scheduled-tasks' do
-      # described_class.start(['ssh', '--file', 'spec/support/ECSFile'])
-      skip 'TODO: Implement feature'
+      expect(runner).to receive(:update_crons!)
+      expect_any_instance_of(described_class).to receive(:runner).and_return(runner)
+
+      described_class.start(['deploy-scheduled-tasks', '--file', 'spec/support/ECSFile'])
     end
   end
 end

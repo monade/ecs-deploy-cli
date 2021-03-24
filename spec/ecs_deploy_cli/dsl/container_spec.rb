@@ -14,6 +14,21 @@ describe EcsDeployCli::DSL::Container do
       expect(subject.as_definition[:memory_reservation]).to eq(900)
     end
 
+    it '#env configures a single env' do
+      subject.env key: 'SOME', value: 'env'
+      subject.env key: 'SOME2', value: 'env2'
+      expect(subject.as_definition[:environment]).to eq(
+        [
+          {
+            'name' => 'SOME', 'value' => 'env'
+          },
+          {
+            'name' => 'SOME2', 'value' => 'env2'
+          }
+        ]
+      )
+    end
+
     it '#cloudwatch_logs configures cloudwatch logs' do
       subject.cloudwatch_logs 'yourproject'
       expect(subject.as_definition[:log_configuration]).to eq(

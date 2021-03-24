@@ -4,19 +4,35 @@
 
 A CLI + DSL to simplify deployments on ECS.
 
-It's partial, incomplete and unstable, DON'T use yet.
+It's partial, incomplete and unstable. Use it at your own risk.
+
+## Motivation
+
+Once you've configured your cluster on ECS, running Continous Deployment is not that easy.
+
+A simple deployment requires:
+* Upload the Docker image
+* Update all your tasks
+* Update all services
+* Update eventual Scheduled Tasks manually
+
+We had some struggle with the official `ecs-cli` approach related with static compose files, requiring a lot of repetition (and potential errors) while defining tasks and envs.
+
+Moreover, you might want some business logic about how your cluster should be configured, like using ENV files, or switch between stages (production / staging), or adjusting container requirements based on external variables.
+
+So, why not creating a DSL built on top of our favourite language? <3
 
 ## Installation
 
-Simply add the gem to your Gemfile
-
-```ruby
-  gem 'ecs-deploy-cli', github: 'monade/ecs-deploy-cli'
-```
-
-Or install it globally to use it as a cli:
+You can install this gem globally
 ```bash
   $ gem install ecs-deploy-cli
+```
+
+Or add the gem to your Gemfile:
+
+```ruby
+  gem 'ecs-deploy-cli'
 ```
 
 ## Usage
@@ -40,6 +56,7 @@ container :base_container do
   image "#{ENV['REPO_URL']}:#{ENV['CURRENT_VERSION']}"
   load_envs 'envs/base.yml'
   load_envs 'envs/production.yml'
+  env key: 'MANUAL_ENV', value: '123'
   secret key: 'RAILS_MASTER_KEY', value: 'railsMasterKey' # Taking the secret from AWS System Manager with name "arn:aws:ssm:__AWS_REGION__:__AWS_PROFILE_ID__:parameter/railsMasterKey"
   working_directory '/app'
   cloudwatch_logs 'yourproject' # Configuring cloudwatch logs
@@ -96,23 +113,59 @@ end
 # Scheduled tasks using Cloudwatch Events / Eventbridge
 cron :scheduled_emails do
   task :'yourproject-cron' do
-    # Overrides
-    container :web do
+    # Container overrides
+    container :cron do
       command 'rails', 'cron:exec'
     end
   end
+  subnets 'subnet-123123'
+  launch_type 'FARGATE'
+  # Task role override:
+  # task_role 'somerole'
+
   # Examples:
-  # every 1.hour
+  # run_every '2 hours'
   run_at '0 * * * ? *'
 end
 ```
 
 Now you can run the commands from the CLI.
 
-For instance, you can deploy all services:
+For instance, you can run deploy:
+```bash
+  $ ecs-deploy deploy
+```
+
+## CLI commands
+
+You can find the full command list by running `ecs-deploy help`.
+
+Check if your ECSFile is valid
+```bash
+  $ ecs-deploy validate
+```
+
+Deploy all services and scheduled tasks
+```bash
+  $ ecs-deploy deploy
+```
+
+Deploy just services
 ```bash
   $ ecs-deploy deploy-services
 ```
+
+Deploy just scheduled tasks
+```bash
+  $ ecs-deploy deploy-services
+```
+
+Run SSH on a cluster container instance:
+```bash
+  $ ecs-deploy ssh
+```
+
+## API
 
 You can also use it as an API:
 ```ruby
@@ -124,9 +177,9 @@ runner = EcsDeployCli::Runner.new(parser)
 runner.update_services!
 ```
 
-### TODOs
+## TODOs
 
-- Scheduled tasks implementation
-- SSH to ec2 instances
+- Create cloudwatch logs group if it doesn't exist yet
+- Create the service if not present?
+- Create scheduled tasks if not present?
 - More configuration options
-- Create the service if not present

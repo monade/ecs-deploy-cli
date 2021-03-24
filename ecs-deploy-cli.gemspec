@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.name        = 'ecs_deploy_cli'
   s.version     = EcsDeployCli::VERSION
   s.date        = '2021-03-31'
-  s.summary     = "A command line interface to make ECS deployments easier"
-  s.description = "Declare your cluster structure in a ECSFile and use the CLI to run deploys and monitor its status."
+  s.summary     = 'A command line interface to make ECS deployments easier'
+  s.description = 'Declare your cluster structure in a ECSFile and use the CLI to run deploys and monitor its status.'
   s.authors     = ['Mònade', 'ProGM']
   s.email       = 'team@monade.io'
   s.files = Dir['lib/**/*']
@@ -18,8 +18,10 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.executables << 'ecs-deploy'
   s.add_dependency 'activesupport', ['>= 5', '< 7']
-  s.add_dependency 'thor'
-  s.add_dependency 'aws-sdk-ecs'
+  s.add_dependency 'aws-sdk-cloudwatchevents', '~> 1'
+  s.add_dependency 'aws-sdk-ec2', '~> 1'
+  s.add_dependency 'aws-sdk-ecs', '~> 1'
+  s.add_dependency 'thor', '~> 1.1'
   s.add_development_dependency 'rspec', '~> 3'
-  s.add_development_dependency 'rubocop'
+  s.add_development_dependency 'rubocop', '~> 0.93'
 end

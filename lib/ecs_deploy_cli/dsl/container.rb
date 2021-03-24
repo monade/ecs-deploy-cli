@@ -10,6 +10,10 @@ module EcsDeployCli
         _options[:name] = name.to_s
       end
 
+      def image(value)
+        _options[:image] = value
+      end
+
       def command(*command)
         _options[:command] = command
       end
@@ -18,12 +22,20 @@ module EcsDeployCli
         _options[:environment] = (_options[:environment] || []) + YAML.safe_load(File.open(name))
       end
 
+      def env(key:, value:)
+        (_options[:environment] ||= []) << { 'name' => key, 'value' => value }
+      end
+
       def secret(key:, value:)
         (_options[:secrets] ||= []) << { name: key, value_from: "arn:aws:ssm:#{@config[:aws_region]}:#{@config[:aws_profile_id]}:parameter/#{value}" }
       end
 
       def expose(**options)
         (_options[:port_mappings] ||= []) << options
+      end
+
+      def cpu(value)
+        _options[:cpu] = value
       end
 
       def memory(limit:, reservation:)

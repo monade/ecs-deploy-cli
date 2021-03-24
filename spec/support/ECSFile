@@ -35,8 +35,6 @@ end
 # A container to exec cron jobs
 container :cron, extends: :base_container do
   command 'rails', 'runner'
-
-  requires_compatibilities ['FARGATE']
 end
 
 # The main task, having two containers
@@ -60,6 +58,7 @@ task :'yourproject-cron' do
   memory 1024
   execution_role 'ecsTaskExecutionRole'
   network_mode 'awsvpc'
+  requires_compatibilities ['FARGATE']
 
   tag 'product', 'yourproject'
 end
@@ -68,11 +67,14 @@ end
 cron :scheduled_emails do
   task :'yourproject-cron' do
     # Overrides
-    container :web do
+    container :cron do
       command 'rails', 'cron:exec'
     end
   end
+  subnets 'subnet-123123'
+  launch_type 'FARGATE'
+  task_role 'ecsEventsRole'
   # Examples:
-  # every 1.hour
+  # run_every '2 hours'
   run_at '0 * * * ? *'
 end

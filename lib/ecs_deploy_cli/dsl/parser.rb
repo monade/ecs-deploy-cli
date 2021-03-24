@@ -23,19 +23,19 @@ module EcsDeployCli
       end
 
       def task(task, &block)
-        @tasks ||= {}
+        @tasks ||= {}.with_indifferent_access
         @tasks[task] = Task.new(task, config)
         @tasks[task].instance_exec(&block)
       end
 
       def service(name, &block)
-        @services ||= {}
+        @services ||= {}.with_indifferent_access
         @services[name.to_s] = Service.new(name, config)
         @services[name.to_s].instance_exec(&block)
       end
 
       def cron(name, &block)
-        @crons ||= {}
+        @crons ||= {}.with_indifferent_access
         @crons[name] = Cron.new(name, config)
         @crons[name].instance_exec(&block)
       end
@@ -56,7 +56,9 @@ module EcsDeployCli
 
       def resolve
         resolved_containers = @containers.transform_values(&:as_definition)
-        [@services, @tasks.transform_values { |t| t.as_definition(resolved_containers) }]
+        resolved_tasks = @tasks.transform_values { |t| t.as_definition(resolved_containers) }
+        resolved_crons = @crons.transform_values { |t| t.as_definition(resolved_tasks) }
+        [@services, resolved_tasks, resolved_crons]
       end
 
       def self.load(file)

@@ -2,6 +2,7 @@ require 'yaml'
 require 'logger'
 require 'thor'
 require 'aws-sdk-ecs'
+require 'active_support/core_ext/hash/indifferent_access'
 
 module EcsDeployCli
   def self.logger

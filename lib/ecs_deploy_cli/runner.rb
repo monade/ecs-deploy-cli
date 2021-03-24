@@ -9,29 +9,60 @@ module EcsDeployCli
     end
 
     def update_crons!
-      resolved_tasks = @parser.resolve!
+      _, tasks, crons = @parser.resolve
 
-      raise NotImplementedError
+      crons.each do |cron_name, cron_definition|
+        task_definition = tasks[cron_definition[:task_name]]
+        raise "Undefined task #{cron_definition[:task_name].inspect} in (#{tasks.keys.inspect})" unless task_definition
+
+        updated_task = _update_task(task_definition)
+
+        current_target = cwe_client.list_targets_by_rule(
+          {
+            rule: cron_name,
+            limit: 1
+          }
+        ).to_h[:targets].first
+
+        cwe_client.put_rule(
+          cron_definition[:rule]
+        )
+
+        cwe_client.put_targets(
+          rule: cron_name,
+          targets: [
+            id: current_target[:id],
+            arn: current_target[:arn],
+            role_arn: current_target[:role_arn],
+            input: cron_definition[:input].to_json,
+            ecs_parameters: cron_definition[:ecs_parameters].merge(task_definition_arn: updated_task[:task_definition_arn])
+          ]
+        )
+        EcsDeployCli.logger.info "Deployed scheduled task \"#{cron_name}\"!"
+      end
     end
 
     def ssh
-      # INSTANCE_ARN=$(aws ecs list-container-instances --cluster "$PROJECT_NAME-cluster" --output text | cut -f2)
-      # INSTANCE_ID=$(aws ecs describe-container-instances --cluster "$PROJECT_NAME-cluster" --container-instances $INSTANCE_ARN --output text | head -n 1 | cut -f5)
-
-      # INSTANCE_DNS=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --output=text | sed -n '2p' | cut -f15)
-
       instances = ecs_client.list_container_instances(
         cluster: config[:cluster]
       ).to_h[:container_instance_arns]
 
-      instance = instance.first
-      ecs_client.describe_container_instances(
+      response = ecs_client.describe_container_instances(
         cluster: config[:cluster],
-        container_instances: [
-          instance
-        ]
+        container_instances: instances
       )
-      raise instance.inspect
+
+      EcsDeployCli.logger.info "Found instances: #{response.container_instances.map(&:ec2_instance_id).join(', ')}"
+
+      response = ec2_client.describe_instances(
+        instance_ids: response.container_instances.map(&:ec2_instance_id)
+      )
+
+      dns_name = response.reservations[0].instances[0].public_dns_name
+      EcsDeployCli.logger.info "Connecting to ec2-user@#{dns_name}..."
+
+      Process.fork { exec("ssh ec2-user@#{dns_name}") }
+      Process.wait
     end
 
     def update_services!(service: nil, timeout: 500)
@@ -40,14 +71,16 @@ module EcsDeployCli
       services.each do |service_name, service_definition|
         next if !service.nil? && service != service_name
 
-        task_name = _update_task resolved_tasks[service_definition.options[:task]]
+        task_definition = _update_task resolved_tasks[service_definition.options[:task]]
+        task_name = "#{task_definition[:family]}:#{task_definition[:revision]}"
 
         ecs_client.update_service(
           cluster: config[:cluster],
           service: service_name,
-          task_definition: task_name
+          task_definition: "#{task_definition[:family]}:#{task_name}"
         )
         wait_for_deploy(service_name, task_name, timeout: timeout)
+        EcsDeployCli.logger.info "Deployed service \"#{service_name}\"!"
       end
     end
 
@@ -71,16 +104,14 @@ module EcsDeployCli
     end
 
     def _update_task(definition)
-      task_definition = ecs_client.register_task_definition(
+      ecs_client.register_task_definition(
         definition
       ).to_h[:task_definition]
-
-      "#{task_definition[:family]}:#{task_definition[:revision]}"
     end
 
     def log_deployments(task_name, deployments)
       EcsDeployCli.logger.info "Waiting for task: #{task_name} to become ok."
-      EcsDeployCli.logger.info "Deployment status:"
+      EcsDeployCli.logger.info 'Deployment status:'
       deployments.each do |deploy|
         EcsDeployCli.logger.info "[#{deploy.status}] task=#{deploy.task_definition.split('/').last}, "\
                                  "desired_count=#{deploy.desired_count}, pending_count=#{deploy.pending_count}, running_count=#{deploy.running_count}, failed_tasks=#{deploy.failed_tasks}"
@@ -88,11 +119,31 @@ module EcsDeployCli
       EcsDeployCli.logger.info ''
     end
 
+    def ec2_client
+      @ec2_client ||= begin
+        require 'aws-sdk-ec2'
+        Aws::EC2::Client.new(
+          profile: ENV.fetch('AWS_PROFILE', 'default'),
+          region: config[:aws_region]
+        )
+      end
+    end
+
     def ecs_client
       @ecs_client ||= Aws::ECS::Client.new(
         profile: ENV.fetch('AWS_PROFILE', 'default'),
         region: config[:aws_region]
       )
+    end
+
+    def cwe_client
+      @cwe_client ||= begin
+        require 'aws-sdk-cloudwatchevents'
+        Aws::CloudWatchEvents::Client.new(
+          profile: ENV.fetch('AWS_PROFILE', 'default'),
+          region: config[:aws_region]
+        )
+      end
     end
 
     def config
