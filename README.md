@@ -157,7 +157,7 @@ Deploy just services
 
 Deploy just scheduled tasks
 ```bash
-  $ ecs-deploy deploy-services
+  $ ecs-deploy deploy-scheduled-tasks
 ```
 
 Run SSH on a cluster container instance:
@@ -182,4 +182,6 @@ runner.update_services!
 - Create cloudwatch logs group if it doesn't exist yet
 - Create the service if not present?
 - Create scheduled tasks if not present?
+- Navigate through logs
+- Recap cluster status
 - More configuration options
