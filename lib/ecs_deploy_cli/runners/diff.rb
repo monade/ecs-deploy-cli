@@ -13,7 +13,7 @@ module EcsDeployCli
           EcsDeployCli.logger.info '---'
           EcsDeployCli.logger.info "Task: #{task_name}"
 
-          result = ecs_client.describe_task_definition(task_definition: "#{task_name}").to_h
+          result = ecs_client.describe_task_definition(task_definition: task_name).to_h
 
           current = result[:task_definition].except(:revision, :status, :registered_at, :registered_by, :requires_attributes, :task_definition_arn)
 

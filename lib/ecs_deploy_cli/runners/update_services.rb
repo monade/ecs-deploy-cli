@@ -15,7 +15,7 @@ module EcsDeployCli
           ecs_client.update_service(
             cluster: config[:cluster],
             service: service_name,
-            task_definition: "#{task_definition[:family]}:#{task_name}"
+            task_definition: task_name
           )
           wait_for_deploy(service_name, task_name, timeout: timeout)
           EcsDeployCli.logger.info "Deployed service \"#{service_name}\"!"

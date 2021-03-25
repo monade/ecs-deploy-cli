@@ -142,7 +142,11 @@ describe EcsDeployCli::Runner do
 
       it '#update_services!' do
         expect(mock_ecs_client).to receive(:register_task_definition).at_least(:once).and_return({ task_definition: { family: 'some', revision: '1' } })
-        expect(mock_ecs_client).to receive(:update_service)
+        expect(mock_ecs_client).to receive(:update_service).with(
+          cluster: 'yourproject-cluster',
+          service: 'yourproject-service',
+          task_definition: 'some:1'
+        )
         expect(mock_ecs_client).to receive(:wait_until)
 
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
