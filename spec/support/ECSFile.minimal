@@ -1,0 +1,12 @@
+aws_region ENV.fetch('AWS_REGION', 'eu-central-1')
+
+# Used to create ARNs
+aws_profile_id '123123'
+
+# Defining the cluster name
+cluster 'yourproject-cluster'
+
+# A container to exec cron jobs
+container :cron do
+  command 'rails', 'runner'
+end

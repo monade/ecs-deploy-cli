@@ -2,7 +2,7 @@
 
 # ECS Deploy CLI
 
-A CLI + DSL to simplify deployments on ECS.
+A CLI + DSL to simplify deployments on AWS [Elastic Container Service](https://aws.amazon.com/it/ecs/).
 
 It's partial, incomplete and unstable. Use it at your own risk.
 
@@ -158,6 +158,16 @@ Deploy just services
 Deploy just scheduled tasks
 ```bash
   $ ecs-deploy deploy-scheduled-tasks
+```
+
+Prints the diff between your local task_definitions and the ones in your AWS account. Useful to debug what has to be updated using `deploy`.
+```bash
+  $ ecs-deploy diff
+```
+
+Starts a task in the cluster based on a task definition.
+```bash
+  $ ecs-deploy run-task [task_name] --subnets subnet1,subnet2 --launch-type FARGATE|EC2 --security-groups sg-123,sg-234
 ```
 
 Run SSH on a cluster container instance:

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 require 'aws-sdk-cloudwatchevents'
 require 'aws-sdk-ec2'
@@ -12,8 +14,65 @@ describe EcsDeployCli::Runner do
       Aws::CloudWatchEvents::Client.new(stub_responses: true)
     end
 
-    it '#validate!' do
-      expect { subject.validate! }.to raise_error('Missing required parameter aws_profile_id')
+    context '#validate!' do
+      it 'fails on missing params' do
+        expect { subject.validate! }.to raise_error('Missing required parameter aws_profile_id')
+      end
+
+      context 'with a minimal set of options' do
+        let(:parser) { EcsDeployCli::DSL::Parser.load('spec/support/ECSFile.minimal') }
+        it 'fails on missing params' do
+          mock_ecs_client.stub_responses(:describe_clusters, { clusters: [{ cluster_arn: 'arn:xxx', cluster_name: 'yourproject-cluster' }] })
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          subject.validate!
+        end
+      end
+
+      context 'with envs set' do
+        around(:each) do |example|
+          ENV['AWS_PROFILE_ID'] = '123123123'
+          ENV['AWS_REGION'] = 'us-east-1'
+          example.run
+          ENV['AWS_PROFILE_ID'] = nil
+          ENV['AWS_REGION'] = nil
+        end
+
+        it 'fails on missing cluster' do
+          mock_ecs_client.stub_responses(:describe_clusters, { failures: [{ arn: 'arn:xxx', reason: 'MISSING' }] })
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect { subject.validate! }.to raise_error('No such cluster yourproject-cluster.')
+        end
+
+        it 'fails on missing service' do
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+
+          mock_ecs_client.stub_responses(:describe_clusters, { clusters: [{ cluster_arn: 'arn:xxx', cluster_name: 'yourproject-cluster' }] })
+          mock_ecs_client.stub_responses(:describe_services, { services: [], failures: [{}] })
+
+          expect { subject.validate! }.to raise_error('No such service yourproject-service.')
+        end
+
+        it 'fails on missing crons' do
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+
+          mock_ecs_client.stub_responses(:describe_clusters, { clusters: [{ cluster_arn: 'arn:xxx', cluster_name: 'yourproject-cluster' }] })
+          mock_ecs_client.stub_responses(:describe_services, { services: [{ service_arn: 'arn:xxx', service_name: 'yourproject-service' }] })
+
+          expect { subject.validate! }.to raise_error('No such cron scheduled_emails.')
+        end
+
+        it 'makes API calls to check if everything is there' do
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
+
+          mock_ecs_client.stub_responses(:describe_clusters, { clusters: [{ cluster_arn: 'arn:xxx', cluster_name: 'yourproject-cluster' }] })
+          mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
+          mock_ecs_client.stub_responses(:describe_services, { services: [{ service_arn: 'arn:xxx', service_name: 'yourproject-service' }] })
+
+          subject.validate!
+        end
+      end
     end
 
     context 'with envs set' do
@@ -30,24 +89,44 @@ describe EcsDeployCli::Runner do
         expect(mock_ecs_client).to receive(:describe_container_instances).and_return(double(container_instances: [double(ec2_instance_id: 'i-123123')]))
 
         expect(mock_ec2_client).to receive(:describe_instances)
-                                   .with(instance_ids: ['i-123123'])
-                                   .and_return(
-                                     double(reservations: [
-                                       double(instances: [double(public_dns_name: 'test.com')])
-                                      ]
-                                    )
-                                   )
+          .with(instance_ids: ['i-123123'])
+          .and_return(
+            double(reservations: [
+                     double(instances: [double(public_dns_name: 'test.com')])
+                   ])
+          )
 
         expect(Process).to receive(:fork) do |&block|
           block.call
         end
         expect(Process).to receive(:wait)
 
-        expect(subject).to receive(:exec).with('ssh ec2-user@test.com')
-        expect(subject).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
-        expect(subject).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
+        expect_any_instance_of(EcsDeployCli::Runners::SSH).to receive(:exec).with('ssh ec2-user@test.com')
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
 
         subject.ssh
+      end
+
+      it '#diff' do
+        mock_ecs_client.stub_responses(:describe_task_definition)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+
+        expect(EcsDeployCli.logger).to receive(:info).at_least(:once) do |message|
+          puts message
+        end
+
+        expect { subject.diff }.to output(/Task: yourproject/).to_stdout
+      end
+
+      it '#run_task!' do
+        mock_ecs_client.stub_responses(:register_task_definition, { task_definition: { family: 'some', revision: 1, task_definition_arn: 'arn:task:eu-central-1:xxxx' } })
+
+        mock_cwe_client.stub_responses(:run_task)
+
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+
+        subject.run_task!('yourproject-cron', launch_type: 'FARGATE', security_groups: [], subnets: [])
       end
 
       it '#update_crons!' do
@@ -55,8 +134,8 @@ describe EcsDeployCli::Runner do
 
         mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
 
-        expect(subject).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
-        expect(subject).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
 
         subject.update_crons!
       end
@@ -66,7 +145,7 @@ describe EcsDeployCli::Runner do
         expect(mock_ecs_client).to receive(:update_service)
         expect(mock_ecs_client).to receive(:wait_until)
 
-        expect(subject).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
         subject.update_services!
       end

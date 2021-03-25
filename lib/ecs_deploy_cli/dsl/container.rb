@@ -5,13 +5,11 @@ module EcsDeployCli
     class Container
       include AutoOptions
 
+      allowed_options :image, :cpu, :working_directory
+
       def initialize(name, config)
         @config = config
         _options[:name] = name.to_s
-      end
-
-      def image(value)
-        _options[:image] = value
       end
 
       def command(*command)
@@ -19,11 +17,11 @@ module EcsDeployCli
       end
 
       def load_envs(name)
-        _options[:environment] = (_options[:environment] || []) + YAML.safe_load(File.open(name))
+        _options[:environment] = (_options[:environment] || []) + YAML.safe_load(File.open(name), symbolize_names: true)
       end
 
       def env(key:, value:)
-        (_options[:environment] ||= []) << { 'name' => key, 'value' => value }
+        (_options[:environment] ||= []) << { name: key, value: value }
       end
 
       def secret(key:, value:)
@@ -32,10 +30,6 @@ module EcsDeployCli
 
       def expose(**options)
         (_options[:port_mappings] ||= []) << options
-      end
-
-      def cpu(value)
-        _options[:cpu] = value
       end
 
       def memory(limit:, reservation:)

@@ -55,9 +55,9 @@ module EcsDeployCli
       end
 
       def resolve
-        resolved_containers = @containers.transform_values(&:as_definition)
-        resolved_tasks = @tasks.transform_values { |t| t.as_definition(resolved_containers) }
-        resolved_crons = @crons.transform_values { |t| t.as_definition(resolved_tasks) }
+        resolved_containers = (@containers || {}).transform_values(&:as_definition)
+        resolved_tasks = (@tasks || {}).transform_values { |t| t.as_definition(resolved_containers) }
+        resolved_crons = (@crons || {}).transform_values { |t| t.as_definition(resolved_tasks) }
         [@services, resolved_tasks, resolved_crons]
       end
 

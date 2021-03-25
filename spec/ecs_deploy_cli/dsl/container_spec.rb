@@ -20,10 +20,10 @@ describe EcsDeployCli::DSL::Container do
       expect(subject.as_definition[:environment]).to eq(
         [
           {
-            'name' => 'SOME', 'value' => 'env'
+            name: 'SOME', value: 'env'
           },
           {
-            'name' => 'SOME2', 'value' => 'env2'
+            name: 'SOME2', value: 'env2'
           }
         ]
       )
@@ -89,10 +89,10 @@ describe EcsDeployCli::DSL::Container do
       expect(subject.as_definition[:environment]).to eq(
         [
           {
-            'name' => 'RAILS_ENV', 'value' => 'production'
+            name: 'RAILS_ENV', value: 'production'
           },
           {
-            'name' => 'API_KEY', 'value' => '123123123'
+            name: 'API_KEY', value: '123123123'
           }
         ]
       )

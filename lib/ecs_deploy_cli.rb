@@ -1,14 +1,17 @@
+# frozen_string_literal: true
+
 require 'yaml'
 require 'logger'
 require 'thor'
 require 'aws-sdk-ecs'
 require 'active_support/core_ext/hash/indifferent_access'
+require 'active_support/concern'
 
 module EcsDeployCli
   def self.logger
     @logger ||= begin
       logger = Logger.new(STDOUT)
-      logger.formatter = proc { |severity, datetime, progname, msg|
+      logger.formatter = proc { |_severity, _datetime, _progname, msg|
         "#{msg}\n"
       }
       logger.level = Logger::INFO

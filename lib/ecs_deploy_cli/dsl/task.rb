@@ -5,6 +5,8 @@ module EcsDeployCli
     class Task
       include AutoOptions
 
+      allowed_options :requires_compatibilities, :network_mode
+
       def initialize(name, config)
         @config = config
         _options[:family] = name.to_s
