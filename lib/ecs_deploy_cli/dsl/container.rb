@@ -56,6 +56,10 @@ module EcsDeployCli
 
       def as_definition
         {
+          cpu: 0,
+          mount_points: [],
+          port_mappings: [],
+          volumes_from: [],
           memory_reservation: nil,
           essential: true
         }.merge(_options)
