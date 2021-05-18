@@ -187,11 +187,15 @@ runner = EcsDeployCli::Runner.new(parser)
 runner.update_services!
 ```
 
+### Known issues
+- The ecsInstanceRole has to be created manually if missing: https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html
+
 ## TODOs
 
+- Create the cluster
 - Create cloudwatch logs group if it doesn't exist yet
 - Create the service if not present?
 - Create scheduled tasks if not present?
-- Navigate through logs
+- Navigate through logs (or maybe not: https://github.com/jorgebastida/awslogs)
 - Recap cluster status
 - More configuration options

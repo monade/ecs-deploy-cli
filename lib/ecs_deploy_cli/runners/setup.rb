@@ -8,6 +8,10 @@ module EcsDeployCli
 
         params = create_params(cluster_options)
 
+        ecs_client.create_cluster(
+          cluster_name: config[:cluster]
+        )
+
         stack_name = "EC2ContainerService-#{config[:cluster]}"
 
         cf_client.create_stack(
@@ -55,7 +59,7 @@ module EcsDeployCli
           'UseSpot' =>	false,
           #####
 
-          'UserData' => "#!/bin/bash echo ECS_CLUSTER=#{config[:cluster]} >> /etc/ecs/ecs.config;echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;",
+          'UserData' => "#!/bin/bash\necho ECS_CLUSTER=#{config[:cluster]} >> /etc/ecs/ecs.config;echo ECS_BACKEND_HOST= >> /etc/ecs/ecs.config;",
           'VpcAvailabilityZones' => cluster_options.dig(:vpc, :availability_zones),
           'VpcCidr' => cluster_options.dig(:vpc, :cidr),
           'SubnetCidr1' => cluster_options.dig(:vpc, :subnet1),

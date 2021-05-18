@@ -48,6 +48,14 @@ describe EcsDeployCli::CLI do
       described_class.start(['run-task', 'yourproject', '--subnets', 'subnet-123123', '--file', 'spec/support/ECSFile'])
     end
 
+    it 'runs setup' do
+      expect(runner).to receive(:setup!)
+      described_class.no_commands do
+        expect_any_instance_of(described_class).to receive(:runner).at_least(:once).and_return(runner)
+      end
+      expect { described_class.start(['setup', '--file', 'spec/support/ECSFile']) }.to output(/[WARNING]/).to_stdout
+    end
+
     it 'runs deploy' do
       expect(runner).to receive(:update_crons!)
       expect(runner).to receive(:update_services!).with(timeout: 500)
