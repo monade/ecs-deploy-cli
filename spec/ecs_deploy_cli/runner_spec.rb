@@ -98,6 +98,7 @@ describe EcsDeployCli::Runner do
                                        })
 
         allow(mock_cf_client).to receive(:wait_until)
+        allow(mock_ecs_client).to receive(:create_service)
 
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ssm_client).at_least(:once).and_return(mock_ssm_client)

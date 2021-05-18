@@ -4,7 +4,17 @@ module EcsDeployCli
   module Runners
     class Setup < Base
       def run!
-        _, _, _, cluster_options = @parser.resolve
+        services, resolved_tasks, _, cluster_options = @parser.resolve
+
+        setup_cluster! cluster_options
+        setup_services! services, resolved_tasks: resolved_tasks
+      end
+
+      private
+
+      def setup_cluster!(cluster_options)
+        clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
+        return if clusters.length == 1
 
         params = create_params(cluster_options)
 
@@ -22,6 +32,27 @@ module EcsDeployCli
         )
 
         cf_client.wait_until(:stack_create_complete, { stack_name: stack_name }, delay: 30, max_attempts: 120)
+      end
+
+      def setup_services!(services, resolved_tasks:)
+        services.each do |service_name, service_definition|
+          task_definition = _update_task resolved_tasks[service_definition.options[:task]]
+          task_name = "#{task_definition[:family]}:#{task_definition[:revision]}"
+
+          ecs_client.create_service(
+            cluster: config[:cluster],
+            desired_count: 1,
+            # load_balancers: [
+            #   {
+            #     container_name: "simple-app",
+            #     container_port: 80,
+            #     load_balancer_name: "EC2Contai-EcsElast-15DCDAURT3ZO2",
+            #   }
+            # ],
+            service_name: service_name,
+            task_definition: task_name
+          )
+        end
       end
 
       def create_params(cluster_options)
