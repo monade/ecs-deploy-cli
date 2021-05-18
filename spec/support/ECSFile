@@ -56,6 +56,11 @@ end
 # The main service
 service :'yourproject-service' do
   task :yourproject
+  load_balancer :'yourproject-load-balancer' do
+    target_group_arn 'loader-target-group/123abc'
+    container_name :web
+    container_port 80
+  end
 end
 
 # A task for cron jobs

@@ -42,13 +42,7 @@ module EcsDeployCli
           ecs_client.create_service(
             cluster: config[:cluster],
             desired_count: 1,
-            # load_balancers: [
-            #   {
-            #     container_name: "simple-app",
-            #     container_port: 80,
-            #     load_balancer_name: "EC2Contai-EcsElast-15DCDAURT3ZO2",
-            #   }
-            # ],
+            load_balancers: service_definition[:load_balancers],
             service_name: service_name,
             task_definition: task_name
           )
