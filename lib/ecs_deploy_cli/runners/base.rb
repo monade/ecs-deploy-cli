@@ -46,6 +46,26 @@ module EcsDeployCli
         end
       end
 
+      def ssm_client
+        @cwl_client ||= begin
+          require 'aws-sdk-ssm'
+          Aws::SSM::Client.new(
+            profile: ENV.fetch('AWS_PROFILE', 'default'),
+            region: config[:aws_region]
+          )
+        end
+      end
+
+      def cf_client
+        @cl_client ||= begin
+          require 'aws-sdk-cloudformation'
+          Aws::CloudFormation::Client.new(
+            profile: ENV.fetch('AWS_PROFILE', 'default'),
+            region: config[:aws_region]
+          )
+        end
+      end
+
       def config
         @parser.config
       end

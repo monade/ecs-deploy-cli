@@ -7,11 +7,16 @@ require 'ecs_deploy_cli/runners/diff'
 require 'ecs_deploy_cli/runners/update_crons'
 require 'ecs_deploy_cli/runners/update_services'
 require 'ecs_deploy_cli/runners/run_task'
+require 'ecs_deploy_cli/runners/setup'
 
 module EcsDeployCli
   class Runner
     def initialize(parser)
       @parser = parser
+    end
+
+    def setup!
+      EcsDeployCli::Runners::Setup.new(@parser).run!
     end
 
     def validate!

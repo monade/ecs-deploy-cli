@@ -3,11 +3,15 @@
 require 'spec_helper'
 require 'aws-sdk-cloudwatchevents'
 require 'aws-sdk-ec2'
+require 'aws-sdk-ssm'
+require 'aws-sdk-cloudformation'
 
 describe EcsDeployCli::Runner do
   context 'defines task data' do
     let(:parser) { EcsDeployCli::DSL::Parser.load('spec/support/ECSFile') }
     subject { described_class.new(parser) }
+    let(:mock_cf_client) { Aws::CloudFormation::Client.new(stub_responses: true) }
+    let(:mock_ssm_client) { Aws::SSM::Client.new(stub_responses: true) }
     let(:mock_ecs_client) { Aws::ECS::Client.new(stub_responses: true) }
     let(:mock_ec2_client) { Aws::EC2::Client.new(stub_responses: true) }
     let(:mock_cwe_client) do
@@ -82,6 +86,23 @@ describe EcsDeployCli::Runner do
         example.run
         ENV['AWS_PROFILE_ID'] = nil
         ENV['AWS_REGION'] = nil
+      end
+
+      it '#setup!' do
+        mock_ssm_client.stub_responses(:get_parameter, {
+                                         parameter: {
+                                           name: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended',
+                                           type: 'String',
+                                           value: '{"schema_version":1,"image_name":"amzn2-ami-ecs-hvm-2.0.20210331-x86_64-ebs","image_id":"ami-03bbf53329af34379","os":"Amazon Linux 2","ecs_runtime_version":"Docker version 19.03.13-ce","ecs_agent_version":"1.51.0"}'
+                                         }
+                                       })
+
+        allow(mock_cf_client).to receive(:wait_until)
+
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ssm_client).at_least(:once).and_return(mock_ssm_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cf_client).at_least(:once).and_return(mock_cf_client)
+
+        subject.setup!
       end
 
       it '#ssh' do

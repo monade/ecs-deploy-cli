@@ -19,9 +19,11 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
   s.executables << 'ecs-deploy'
   s.add_dependency 'activesupport', ['>= 5', '< 7']
+  s.add_dependency 'aws-sdk-cloudformation', '~> 1'
   s.add_dependency 'aws-sdk-cloudwatchevents', '~> 1'
   s.add_dependency 'aws-sdk-ec2', '~> 1'
   s.add_dependency 'aws-sdk-ecs', '~> 1'
+  s.add_dependency 'aws-sdk-ssm', '~> 1'
   s.add_dependency 'colorize', '~> 0.8.1'
   s.add_dependency 'hashdiff', '~> 1.0'
   s.add_dependency 'thor', '~> 1.1'
