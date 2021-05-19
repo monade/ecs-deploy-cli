@@ -197,7 +197,6 @@ runner.update_services!
 
 ## TODOs
 
-- Create the service if not present?
 - Create scheduled tasks if not present?
 - Navigate through logs (or maybe not: https://github.com/jorgebastida/awslogs)
 - Recap cluster status

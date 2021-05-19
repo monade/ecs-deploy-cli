@@ -26,9 +26,8 @@ module EcsDeployCli
       puts "ECS Deploy CLI Version #{EcsDeployCli::VERSION}."
     end
 
-    desc 'setup', 'Setups the cluster'
+    desc 'setup', 'Creates the cluster and relative services'
     option :file, default: 'ECSFile'
-    option :timeout, type: :numeric, default: 500
     def setup
       @parser = load(options[:file])
       runner.setup!
