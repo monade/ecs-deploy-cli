@@ -22,7 +22,6 @@ describe EcsDeployCli::DSL::Service do
           {
             container_name: :web,
             container_port: 80,
-            load_balancer_name: :"yourproject-load-balancer",
             target_group_arn: 'arn:aws:elasticloadbalancing:eu-central-1:123123:targetgroup/loader-target-group/123abc'
           }
         ]

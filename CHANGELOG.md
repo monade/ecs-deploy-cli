@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project made by Monade Team are documented in this file. For info refer to team@monade.io
 
+## [0.3.0] - 2021-05-19
+### Added
+- new command `setup` that creates the cluster and all the services
+- If you select "cloudwatch" as log target for your container, the log groups get automatically created
+- Allow setting up load balancers for services
+
 ## [0.2.2] - 2021-04-01
 ### Fixed
 - Command `diff` was showing a bunch of junk data

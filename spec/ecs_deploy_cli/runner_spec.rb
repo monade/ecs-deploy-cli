@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'aws-sdk-cloudwatchevents'
+require 'aws-sdk-cloudwatchlogs'
 require 'aws-sdk-ec2'
 require 'aws-sdk-ssm'
 require 'aws-sdk-cloudformation'
@@ -14,6 +15,7 @@ describe EcsDeployCli::Runner do
     let(:mock_ssm_client) { Aws::SSM::Client.new(stub_responses: true) }
     let(:mock_ecs_client) { Aws::ECS::Client.new(stub_responses: true) }
     let(:mock_ec2_client) { Aws::EC2::Client.new(stub_responses: true) }
+    let(:mock_cwl_client) { Aws::CloudWatchLogs::Client.new(stub_responses: true) }
     let(:mock_cwe_client) do
       Aws::CloudWatchEvents::Client.new(stub_responses: true)
     end
@@ -97,9 +99,10 @@ describe EcsDeployCli::Runner do
                                          }
                                        })
 
-        allow(mock_cf_client).to receive(:wait_until)
-        allow(mock_ecs_client).to receive(:create_service)
+        expect(mock_cf_client).to receive(:wait_until)
+        expect(mock_ecs_client).to receive(:create_service)
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ssm_client).at_least(:once).and_return(mock_ssm_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cf_client).at_least(:once).and_return(mock_cf_client)
@@ -147,6 +150,7 @@ describe EcsDeployCli::Runner do
 
         mock_cwe_client.stub_responses(:run_task)
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
         subject.run_task!('yourproject-cron', launch_type: 'FARGATE', security_groups: [], subnets: [])
@@ -157,6 +161,7 @@ describe EcsDeployCli::Runner do
 
         mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
 
@@ -172,6 +177,7 @@ describe EcsDeployCli::Runner do
         )
         expect(mock_ecs_client).to receive(:wait_until)
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
         subject.update_services!

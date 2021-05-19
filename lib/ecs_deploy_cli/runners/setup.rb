@@ -14,7 +14,12 @@ module EcsDeployCli
 
       def setup_cluster!(cluster_options)
         clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
-        return if clusters.length == 1
+        if clusters.length == 1
+          EcsDeployCli.logger.info 'Cluster already created, skipping.'
+          return
+        end
+
+        EcsDeployCli.logger.info "Creating cluster #{config[:cluster]}..."
 
         params = create_params(cluster_options)
 
@@ -24,6 +29,7 @@ module EcsDeployCli
 
         stack_name = "EC2ContainerService-#{config[:cluster]}"
 
+
         cf_client.create_stack(
           stack_name: stack_name,
           template_body: File.read(File.join(__dir__, '..', 'cloudformation', 'default.yml')),
@@ -32,20 +38,28 @@ module EcsDeployCli
         )
 
         cf_client.wait_until(:stack_create_complete, { stack_name: stack_name }, delay: 30, max_attempts: 120)
+        EcsDeployCli.logger.info "Cluster #{config[:cluster]} created!"
       end
 
       def setup_services!(services, resolved_tasks:)
         services.each do |service_name, service_definition|
+          if ecs_client.describe_services(cluster: config[:cluster], services: [service_name]).to_h[:services].any?
+            EcsDeployCli.logger.info "Service #{service_name} already created, skipping."
+            next
+          end
+
+          EcsDeployCli.logger.info "Creating service #{service_name}..."
           task_definition = _update_task resolved_tasks[service_definition.options[:task]]
           task_name = "#{task_definition[:family]}:#{task_definition[:revision]}"
 
           ecs_client.create_service(
             cluster: config[:cluster],
             desired_count: 1,
-            load_balancers: service_definition[:load_balancers],
+            load_balancers: service_definition.as_definition(task_definition)[:load_balancers],
             service_name: service_name,
             task_definition: task_name
           )
+          EcsDeployCli.logger.info "Service #{service_name} created!"
         end
       end
 

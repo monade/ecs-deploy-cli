@@ -47,6 +47,7 @@ module EcsDeployCli
 
         def target_group_arn(value)
           _options[:target_group_arn] = "arn:aws:elasticloadbalancing:#{@config[:aws_region]}:#{@config[:aws_profile_id]}:targetgroup/#{value}"
+          _options.delete(:load_balancer_name)
         end
 
         def as_definition
