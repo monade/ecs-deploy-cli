@@ -4,7 +4,14 @@ aws_region ENV.fetch('AWS_REGION', 'eu-central-1')
 aws_profile_id ENV['AWS_PROFILE_ID']
 
 # Defining the cluster name
-cluster 'yourproject-cluster'
+cluster 'yourproject-cluster' do
+  instance_type 't3.small'
+  keypair_name 'test'
+
+  vpc do
+    availability_zones 'eu-central-1a', 'eu-central-1b', 'eu-central-1c'
+  end
+end
 
 # This is used as a template for the next two containers, it will not be used inside a task
 container :base_container do
@@ -49,6 +56,11 @@ end
 # The main service
 service :'yourproject-service' do
   task :yourproject
+  load_balancer :'yourproject-load-balancer' do
+    target_group_arn 'loader-target-group/123abc'
+    container_name :web
+    container_port 80
+  end
 end
 
 # A task for cron jobs

@@ -40,8 +40,11 @@ module EcsDeployCli
         @crons[name].instance_exec(&block)
       end
 
-      def cluster(name)
+      def cluster(name, &block)
         config[:cluster] = name
+        @cluster ||= {}.with_indifferent_access
+        @cluster = Cluster.new(name, config)
+        @cluster.instance_exec(&block) if block
       end
 
       def config
@@ -58,7 +61,8 @@ module EcsDeployCli
         resolved_containers = (@containers || {}).transform_values(&:as_definition)
         resolved_tasks = (@tasks || {}).transform_values { |t| t.as_definition(resolved_containers) }
         resolved_crons = (@crons || {}).transform_values { |t| t.as_definition(resolved_tasks) }
-        [@services, resolved_tasks, resolved_crons]
+        resolved_cluster = @cluster.as_definition
+        [@services, resolved_tasks, resolved_crons, resolved_cluster]
       end
 
       def self.load(file)

@@ -2,14 +2,20 @@
 
 require 'spec_helper'
 require 'aws-sdk-cloudwatchevents'
+require 'aws-sdk-cloudwatchlogs'
 require 'aws-sdk-ec2'
+require 'aws-sdk-ssm'
+require 'aws-sdk-cloudformation'
 
 describe EcsDeployCli::Runner do
   context 'defines task data' do
     let(:parser) { EcsDeployCli::DSL::Parser.load('spec/support/ECSFile') }
     subject { described_class.new(parser) }
+    let(:mock_cf_client) { Aws::CloudFormation::Client.new(stub_responses: true) }
+    let(:mock_ssm_client) { Aws::SSM::Client.new(stub_responses: true) }
     let(:mock_ecs_client) { Aws::ECS::Client.new(stub_responses: true) }
     let(:mock_ec2_client) { Aws::EC2::Client.new(stub_responses: true) }
+    let(:mock_cwl_client) { Aws::CloudWatchLogs::Client.new(stub_responses: true) }
     let(:mock_cwe_client) do
       Aws::CloudWatchEvents::Client.new(stub_responses: true)
     end
@@ -84,6 +90,26 @@ describe EcsDeployCli::Runner do
         ENV['AWS_REGION'] = nil
       end
 
+      it '#setup!' do
+        mock_ssm_client.stub_responses(:get_parameter, {
+                                         parameter: {
+                                           name: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended',
+                                           type: 'String',
+                                           value: '{"schema_version":1,"image_name":"amzn2-ami-ecs-hvm-2.0.20210331-x86_64-ebs","image_id":"ami-03bbf53329af34379","os":"Amazon Linux 2","ecs_runtime_version":"Docker version 19.03.13-ce","ecs_agent_version":"1.51.0"}'
+                                         }
+                                       })
+
+        expect(mock_cf_client).to receive(:wait_until)
+        expect(mock_ecs_client).to receive(:create_service)
+
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ssm_client).at_least(:once).and_return(mock_ssm_client)
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cf_client).at_least(:once).and_return(mock_cf_client)
+
+        subject.setup!
+      end
+
       it '#ssh' do
         expect(mock_ecs_client).to receive(:list_container_instances).and_return({ container_instance_arns: ['arn:123123'] })
         expect(mock_ecs_client).to receive(:describe_container_instances).and_return(double(container_instances: [double(ec2_instance_id: 'i-123123')]))
@@ -124,6 +150,7 @@ describe EcsDeployCli::Runner do
 
         mock_cwe_client.stub_responses(:run_task)
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
         subject.run_task!('yourproject-cron', launch_type: 'FARGATE', security_groups: [], subnets: [])
@@ -134,6 +161,7 @@ describe EcsDeployCli::Runner do
 
         mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
 
@@ -149,6 +177,7 @@ describe EcsDeployCli::Runner do
         )
         expect(mock_ecs_client).to receive(:wait_until)
 
+        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
         expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
         subject.update_services!

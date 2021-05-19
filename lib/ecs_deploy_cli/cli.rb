@@ -26,6 +26,13 @@ module EcsDeployCli
       puts "ECS Deploy CLI Version #{EcsDeployCli::VERSION}."
     end
 
+    desc 'setup', 'Creates the cluster and relative services'
+    option :file, default: 'ECSFile'
+    def setup
+      @parser = load(options[:file])
+      runner.setup!
+    end
+
     desc 'deploy-scheduled-tasks', 'Updates all scheduled tasks defined in your ECSFile'
     option :file, default: 'ECSFile'
     def deploy_scheduled_tasks

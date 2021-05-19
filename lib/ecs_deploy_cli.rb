@@ -26,6 +26,7 @@ end
 
 require 'ecs_deploy_cli/version'
 require 'ecs_deploy_cli/dsl/auto_options'
+require 'ecs_deploy_cli/dsl/cluster'
 require 'ecs_deploy_cli/dsl/container'
 require 'ecs_deploy_cli/dsl/task'
 require 'ecs_deploy_cli/dsl/cron'
