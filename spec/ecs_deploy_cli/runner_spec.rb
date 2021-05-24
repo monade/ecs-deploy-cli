@@ -110,28 +110,67 @@ describe EcsDeployCli::Runner do
         subject.setup!
       end
 
-      it '#ssh' do
-        expect(mock_ecs_client).to receive(:list_container_instances).and_return({ container_instance_arns: ['arn:123123'] })
-        expect(mock_ecs_client).to receive(:describe_container_instances).and_return(double(container_instances: [double(ec2_instance_id: 'i-123123')]))
+      context '#ssh' do
+        it 'runs ssh on a single container instance' do
+          expect(mock_ecs_client).to receive(:list_tasks).and_return({ task_arns: ['arn:123123'] })
+          expect(mock_ecs_client).to receive(:describe_tasks).and_return({ tasks: [{ container_instance_arn: 'arn:instance:123123' }] })
+          expect(mock_ecs_client).to receive(:describe_container_instances).and_return(double(container_instances: [double(ec2_instance_id: 'i-123123')]))
 
-        expect(mock_ec2_client).to receive(:describe_instances)
-          .with(instance_ids: ['i-123123'])
-          .and_return(
-            double(reservations: [
-                     double(instances: [double(public_dns_name: 'test.com')])
-                   ])
+          expect(mock_ec2_client).to receive(:describe_instances)
+            .with(instance_ids: ['i-123123'])
+            .and_return(
+              double(reservations: [
+                      double(instances: [double(public_dns_name: 'test.com')])
+                    ])
+            )
+
+          expect(Process).to receive(:fork) do |&block|
+            block.call
+          end
+          expect(Process).to receive(:wait)
+
+          expect_any_instance_of(EcsDeployCli::Runners::SSH).to receive(:exec).with('ssh ec2-user@test.com')
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
+
+          subject.ssh
+        end
+
+        it 'prompts which instance if there are multiple ones' do
+          expect(mock_ecs_client).to receive(:list_tasks).and_return({ task_arns: ['arn:123123', 'arn:321321'] })
+          expect(mock_ecs_client).to receive(:describe_tasks).and_return(
+            {
+              tasks: [
+                { container_instance_arn: 'arn:instance:123123' },
+                { container_instance_arn: 'arn:instance:321321' }
+              ]
+            }
+          )
+          expect(mock_ecs_client).to receive(:describe_container_instances).and_return(
+            double(container_instances: [double(ec2_instance_id: 'i-123123'), double(ec2_instance_id: 'i-321321')])
           )
 
-        expect(Process).to receive(:fork) do |&block|
-          block.call
+          expect(STDIN).to receive(:gets).and_return('2')
+
+          expect(mock_ec2_client).to receive(:describe_instances)
+            .with(instance_ids: ['i-321321'])
+            .and_return(
+              double(reservations: [
+                      double(instances: [double(public_dns_name: 'test.com')])
+                    ])
+            )
+
+          expect(Process).to receive(:fork) do |&block|
+            block.call
+          end
+          expect(Process).to receive(:wait)
+
+          expect_any_instance_of(EcsDeployCli::Runners::SSH).to receive(:exec).with('ssh ec2-user@test.com')
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
+
+          subject.ssh
         end
-        expect(Process).to receive(:wait)
-
-        expect_any_instance_of(EcsDeployCli::Runners::SSH).to receive(:exec).with('ssh ec2-user@test.com')
-        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
-        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
-
-        subject.ssh
       end
 
       it '#diff' do

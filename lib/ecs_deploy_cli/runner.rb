@@ -31,8 +31,8 @@ module EcsDeployCli
       EcsDeployCli::Runners::RunTask.new(@parser).run!(task_name, launch_type: launch_type, security_groups: security_groups, subnets: subnets)
     end
 
-    def ssh
-      EcsDeployCli::Runners::SSH.new(@parser).run!
+    def ssh(**options)
+      EcsDeployCli::Runners::SSH.new(@parser).run!(options)
     end
 
     def diff

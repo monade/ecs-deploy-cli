@@ -75,9 +75,12 @@ module EcsDeployCli
 
     desc 'ssh', 'Connects to ECS instance via SSH'
     option :file, default: 'ECSFile'
+    option :service, default: nil
+    option :task, default: nil
     def ssh
       @parser = load(options[:file])
-      runner.ssh
+      ssh_options = { family: options[:task], service_name: options[:service] }.delete_if { |_, v| v.nil? }
+      runner.ssh(**ssh_options)
     end
 
     private
