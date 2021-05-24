@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project made by Monade Team are documented in this file. For info refer to team@monade.io
 
+## [0.4.0] - 2021-05-24
+### Changed
+- The command `ssh` now handles multiple container instances. You can now filter by task or service. If there are multiple options, it will be prompted.
+
 ## [0.3.0] - 2021-05-19
 ### Added
 - new command `setup` that creates the cluster and all the services
