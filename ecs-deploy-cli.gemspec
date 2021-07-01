@@ -25,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'aws-sdk-ec2', '~> 1'
   s.add_dependency 'aws-sdk-ecs', '~> 1'
   s.add_dependency 'aws-sdk-ssm', '~> 1'
+  s.add_dependency 'aws-sdk-iam', '~> 1'
   s.add_dependency 'colorize', '~> 0.8.1'
   s.add_dependency 'hashdiff', '~> 1.0'
   s.add_dependency 'thor', '~> 1.1'

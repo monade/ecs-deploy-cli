@@ -13,9 +13,13 @@ module EcsDeployCli
       private
 
       def setup_cluster!(cluster_options)
-        clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
-        if clusters.length == 1
+        if cluster_exists?
           EcsDeployCli.logger.info 'Cluster already created, skipping.'
+          return
+        end
+
+        unless ecs_instance_role_exists?
+          EcsDeployCli.logger.info 'IAM Role ecsInstanceRole does not exist. Please create it: https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html.'
           return
         end
 
@@ -108,6 +112,19 @@ module EcsDeployCli
           'VpcId' => cluster_options.dig(:vpc, :id),
           'SubnetIds' => cluster_options.dig(:vpc, :subnet_ids)
         }
+      end
+
+      def cluster_exists?
+        clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
+
+        clusters.length == 1
+      end
+
+      def ecs_instance_role_exists?
+        role = iam_client.get_role(role_name: 'ecsInstanceRole').to_h
+        true
+      rescue Aws::IAM::Errors::NoSuchEntity
+        false
       end
 
       def format_cloudformation_params(params)
