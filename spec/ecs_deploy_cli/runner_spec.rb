@@ -94,13 +94,15 @@ describe EcsDeployCli::Runner do
 
       context '#setup!' do
         before do
-          mock_ssm_client.stub_responses(:get_parameter, {
-                                          parameter: {
-                                            name: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended',
-                                            type: 'String',
-                                            value: '{"schema_version":1,"image_name":"amzn2-ami-ecs-hvm-2.0.20210331-x86_64-ebs","image_id":"ami-03bbf53329af34379","os":"Amazon Linux 2","ecs_runtime_version":"Docker version 19.03.13-ce","ecs_agent_version":"1.51.0"}'
-                                          }
-                                        })
+          mock_ssm_client.stub_responses(
+            :get_parameter, {
+              parameter: {
+                name: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended',
+                type: 'String',
+                value: '{"schema_version":1,"image_name":"amzn2-ami-ecs-hvm-2.0.20210331-x86_64-ebs","image_id":"ami-03bbf53329af34379","os":"Amazon Linux 2","ecs_runtime_version":"Docker version 19.03.13-ce","ecs_agent_version":"1.51.0"}'
+              }
+            }
+          )
         end
 
         it 'setups the cluster correctly' do
@@ -130,19 +132,19 @@ describe EcsDeployCli::Runner do
           end
 
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:iam_client).at_least(:once).and_return(mock_iam_client)
-          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
           expect { subject.setup! }.to output(/IAM Role ecsInstanceRole does not exist./).to_stdout
         end
 
         it 'fails if the cluster is already there' do
-          expect(mock_ecs_client).to receive(:describe_clusters).and_return(clusters: [{  }])
+          expect(mock_ecs_client).to receive(:describe_clusters).and_return(clusters: [{}])
 
           expect(EcsDeployCli.logger).to receive(:info).at_least(:once) do |message|
             puts message
           end
 
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:iam_client).at_least(:once).and_return(mock_iam_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
           expect { subject.setup! }.to output(/Cluster already created, skipping./).to_stdout
@@ -172,9 +174,11 @@ describe EcsDeployCli::Runner do
           expect(mock_ec2_client).to receive(:describe_instances)
             .with(instance_ids: ['i-123123'])
             .and_return(
-              double(reservations: [
-                      double(instances: [double(public_dns_name: 'test.com')])
-                    ])
+              double(
+                reservations: [
+                  double(instances: [double(public_dns_name: 'test.com')])
+                ]
+              )
             )
 
           expect(Process).to receive(:fork) do |&block|
@@ -209,8 +213,8 @@ describe EcsDeployCli::Runner do
             .with(instance_ids: ['i-321321'])
             .and_return(
               double(reservations: [
-                      double(instances: [double(public_dns_name: 'test.com')])
-                    ])
+                       double(instances: [double(public_dns_name: 'test.com')])
+                     ])
             )
 
           expect(Process).to receive(:fork) do |&block|
@@ -248,16 +252,32 @@ describe EcsDeployCli::Runner do
         subject.run_task!('yourproject-cron', launch_type: 'FARGATE', security_groups: [], subnets: [])
       end
 
-      it '#update_crons!' do
-        mock_ecs_client.stub_responses(:register_task_definition, { task_definition: { family: 'some', revision: 1, task_definition_arn: 'arn:task:eu-central-1:xxxx' } })
+      context '#update_crons!' do
+        it 'creates missing crons' do
+          mock_ecs_client.stub_responses(:register_task_definition, { task_definition: { family: 'some', revision: 1, task_definition_arn: 'arn:task:eu-central-1:xxxx' } })
 
-        mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
+          expect(mock_cwe_client).to receive(:list_targets_by_rule) do
+            raise Aws::CloudWatchEvents::Errors::ResourceNotFoundException.new(nil, 'some')
+          end
 
-        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
-        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
-        expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
 
-        subject.update_crons!
+          subject.update_crons!
+        end
+
+        it 'updates existing crons' do
+          mock_ecs_client.stub_responses(:register_task_definition, { task_definition: { family: 'some', revision: 1, task_definition_arn: 'arn:task:eu-central-1:xxxx' } })
+
+          mock_cwe_client.stub_responses(:list_targets_by_rule, { targets: [{ id: '123', arn: 'arn:123' }] })
+
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwe_client).at_least(:once).and_return(mock_cwe_client)
+
+          subject.update_crons!
+        end
       end
 
       it '#update_services!' do

@@ -8,16 +8,13 @@ module EcsDeployCli
 
         crons.each do |cron_name, cron_definition|
           task_definition = tasks[cron_definition[:task_name]]
-          raise "Undefined task #{cron_definition[:task_name].inspect} in (#{tasks.keys.inspect})" unless task_definition
+          unless task_definition
+            raise "Undefined task #{cron_definition[:task_name].inspect} in (#{tasks.keys.inspect})"
+          end
 
           updated_task = _update_task(task_definition)
 
-          current_target = cwe_client.list_targets_by_rule(
-            {
-              rule: cron_name,
-              limit: 1
-            }
-          ).to_h[:targets].first
+          current_target = load_or_init_target(cron_name)
 
           cwe_client.put_rule(
             cron_definition[:rule]
@@ -35,6 +32,18 @@ module EcsDeployCli
           )
           EcsDeployCli.logger.info "Deployed scheduled task \"#{cron_name}\"!"
         end
+      end
+
+      private
+
+      def load_or_init_target(cron_name)
+        cwe_client.list_targets_by_rule({ rule: cron_name, limit: 1 }).to_h[:targets].first
+      rescue Aws::CloudWatchEvents::Errors::ResourceNotFoundException
+        {
+          id: cron_name,
+          arn: "arn:aws:ecs:#{config[:aws_region]}:#{config[:aws_profile_id]}:cluster/#{config[:cluster]}",
+          role_arn: "arn:aws:iam::#{config[:aws_profile_id]}:role/ecsEventsRole"
+        }
       end
     end
   end

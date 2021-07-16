@@ -36,7 +36,7 @@ module EcsDeployCli
         ecs_client.create_cluster(
           cluster_name: config[:cluster]
         )
-        EcsDeployCli.logger.info "Cluster created, now running cloudformation..."
+        EcsDeployCli.logger.info 'Cluster created, now running cloudformation...'
 
         stack_name = "EC2ContainerService-#{config[:cluster]}"
 
@@ -129,14 +129,14 @@ module EcsDeployCli
 
       def ensure_ecs_roles_exists!
         REQUIRED_ECS_ROLES.each do |role_name, link|
-          role = iam_client.get_role(role_name: role_name).to_h
+          iam_client.get_role(role_name: role_name).to_h
         rescue Aws::IAM::Errors::NoSuchEntity
           raise SetupError, "IAM Role #{role_name} does not exist. Please create it: #{link}."
         end
       end
 
       def create_keypair_if_required!(cluster_options)
-        keypairs = ec2_client.describe_key_pairs(key_names: [cluster_options[:keypair_name]]).to_h[:key_pairs]
+        ec2_client.describe_key_pairs(key_names: [cluster_options[:keypair_name]]).to_h[:key_pairs]
       rescue Aws::EC2::Errors::InvalidKeyPairNotFound
         EcsDeployCli.logger.info "Keypair \"#{cluster_options[:keypair_name]}\" not found, creating it..."
         key_material = ec2_client.create_key_pair(key_name: cluster_options[:keypair_name]).to_h[:key_material]

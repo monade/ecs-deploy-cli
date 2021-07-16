@@ -237,7 +237,7 @@ runner.update_services!
 
 ## TODOs
 - Creating the ecsInstanceRole automatically
-- Create scheduled tasks if not present?
+- Create scheduled tasks on setup
 - Navigate through logs (or maybe not: https://github.com/jorgebastida/awslogs)
 - Recap cluster status
 - More configuration options

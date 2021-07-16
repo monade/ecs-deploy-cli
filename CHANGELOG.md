@@ -1,9 +1,10 @@
 # Changelog
 All notable changes to this project made by Monade Team are documented in this file. For info refer to team@monade.io
 
-## [UNRELEASED]
+## [0.5.0] - 2021-07-16
 ### Added
 - Command `setup` now create the keypair if it's missing
+- `deploy-scheduled-tasks` now creates scheduled tasks if not already there
 
 ### Fixed
 - Command `setup` now raises error when the IAM role `ecsInstanceRole` doesn't exist in your account
