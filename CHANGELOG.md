@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to this project made by Monade Team are documented in this file. For info refer to team@monade.io
 
+## [UNRELEASED]
+### Added
+- Command `setup` now create the keypair if it's missing
+
+### Fixed
+- Command `setup` now raises error when the IAM role `ecsInstanceRole` doesn't exist in your account
+- Command `setup` now considers inactive clusters and services as deleted
+
 ## [0.4.0] - 2021-05-24
 ### Changed
 - The command `ssh` now handles multiple container instances. You can now filter by task or service. If there are multiple options, it will be prompted.

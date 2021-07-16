@@ -236,7 +236,7 @@ runner.update_services!
 - The ecsInstanceRole has to be created manually if missing: https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html
 
 ## TODOs
-
+- Creating the ecsInstanceRole automatically
 - Create scheduled tasks if not present?
 - Navigate through logs (or maybe not: https://github.com/jorgebastida/awslogs)
 - Recap cluster status

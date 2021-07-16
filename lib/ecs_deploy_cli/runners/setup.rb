@@ -3,11 +3,21 @@
 module EcsDeployCli
   module Runners
     class Setup < Base
+      REQUIRED_ECS_ROLES = {
+        'ecsInstanceRole' => 'https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html',
+        'ecsTaskExecutionRole' => 'https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html'
+      }.freeze
+      class SetupError < StandardError; end
+
       def run!
         services, resolved_tasks, _, cluster_options = @parser.resolve
 
+        ensure_ecs_roles_exists!
+
         setup_cluster! cluster_options
         setup_services! services, resolved_tasks: resolved_tasks
+      rescue SetupError => e
+        EcsDeployCli.logger.info e.message
       end
 
       private
@@ -18,21 +28,17 @@ module EcsDeployCli
           return
         end
 
-        unless ecs_instance_role_exists?
-          EcsDeployCli.logger.info 'IAM Role ecsInstanceRole does not exist. Please create it: https://docs.aws.amazon.com/batch/latest/userguide/instance_IAM_role.html.'
-          return
-        end
-
         EcsDeployCli.logger.info "Creating cluster #{config[:cluster]}..."
 
+        create_keypair_if_required! cluster_options
         params = create_params(cluster_options)
 
         ecs_client.create_cluster(
           cluster_name: config[:cluster]
         )
+        EcsDeployCli.logger.info "Cluster created, now running cloudformation..."
 
         stack_name = "EC2ContainerService-#{config[:cluster]}"
-
 
         cf_client.create_stack(
           stack_name: stack_name,
@@ -42,12 +48,13 @@ module EcsDeployCli
         )
 
         cf_client.wait_until(:stack_create_complete, { stack_name: stack_name }, delay: 30, max_attempts: 120)
-        EcsDeployCli.logger.info "Cluster #{config[:cluster]} created!"
+        EcsDeployCli.logger.info "Cluster #{config[:cluster]} created! 🎉"
       end
 
       def setup_services!(services, resolved_tasks:)
         services.each do |service_name, service_definition|
-          if ecs_client.describe_services(cluster: config[:cluster], services: [service_name]).to_h[:services].any?
+          existing_services = ecs_client.describe_services(cluster: config[:cluster], services: [service_name]).to_h[:services].filter { |s| s[:status] != 'INACTIVE' }
+          if existing_services.any?
             EcsDeployCli.logger.info "Service #{service_name} already created, skipping."
             next
           end
@@ -58,7 +65,7 @@ module EcsDeployCli
 
           ecs_client.create_service(
             cluster: config[:cluster],
-            desired_count: 1,
+            desired_count: 1, # FIXME: this should be a parameter
             load_balancers: service_definition.as_definition(task_definition)[:load_balancers],
             service_name: service_name,
             task_definition: task_name
@@ -117,14 +124,24 @@ module EcsDeployCli
       def cluster_exists?
         clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
 
-        clusters.length == 1
+        clusters.filter { |c| c[:status] != 'INACTIVE' }.length == 1
       end
 
-      def ecs_instance_role_exists?
-        role = iam_client.get_role(role_name: 'ecsInstanceRole').to_h
-        true
-      rescue Aws::IAM::Errors::NoSuchEntity
-        false
+      def ensure_ecs_roles_exists!
+        REQUIRED_ECS_ROLES.each do |role_name, link|
+          role = iam_client.get_role(role_name: role_name).to_h
+        rescue Aws::IAM::Errors::NoSuchEntity
+          raise SetupError, "IAM Role #{role_name} does not exist. Please create it: #{link}."
+        end
+      end
+
+      def create_keypair_if_required!(cluster_options)
+        keypairs = ec2_client.describe_key_pairs(key_names: [cluster_options[:keypair_name]]).to_h[:key_pairs]
+      rescue Aws::EC2::Errors::InvalidKeyPairNotFound
+        EcsDeployCli.logger.info "Keypair \"#{cluster_options[:keypair_name]}\" not found, creating it..."
+        key_material = ec2_client.create_key_pair(key_name: cluster_options[:keypair_name]).to_h[:key_material]
+        File.write("#{cluster_options[:keypair_name]}.pem", key_material)
+        EcsDeployCli.logger.info "Created PEM file at #{Dir.pwd}/#{cluster_options[:keypair_name]}.pem"
       end
 
       def format_cloudformation_params(params)

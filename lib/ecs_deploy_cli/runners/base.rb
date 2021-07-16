@@ -97,6 +97,16 @@ module EcsDeployCli
         end
       end
 
+      def iam_client
+        @iam_client ||= begin
+          require 'aws-sdk-iam'
+          Aws::IAM::Client.new(
+            profile: ENV.fetch('AWS_PROFILE', 'default'),
+            region: config[:aws_region]
+          )
+        end
+      end
+
       def config
         @parser.config
       end

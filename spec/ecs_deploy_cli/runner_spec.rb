@@ -93,7 +93,7 @@ describe EcsDeployCli::Runner do
       end
 
       context '#setup!' do
-        it 'setups the cluster correctly' do
+        before do
           mock_ssm_client.stub_responses(:get_parameter, {
                                           parameter: {
                                             name: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended',
@@ -101,11 +101,16 @@ describe EcsDeployCli::Runner do
                                             value: '{"schema_version":1,"image_name":"amzn2-ami-ecs-hvm-2.0.20210331-x86_64-ebs","image_id":"ami-03bbf53329af34379","os":"Amazon Linux 2","ecs_runtime_version":"Docker version 19.03.13-ce","ecs_agent_version":"1.51.0"}'
                                           }
                                         })
+        end
 
-          expect(mock_iam_client).to receive(:get_role).with({ role_name: 'ecsInstanceRole' }).and_return({ role: { arn: 'some' } })
+        it 'setups the cluster correctly' do
+          expect(mock_ec2_client).to receive(:describe_key_pairs).and_return(key_pairs: [{ key_id: 'some' }])
+
+          expect(mock_iam_client).to receive(:get_role).at_least(:once).and_return({ role: { arn: 'some' } })
           expect(mock_cf_client).to receive(:wait_until)
           expect(mock_ecs_client).to receive(:create_service)
 
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:iam_client).at_least(:once).and_return(mock_iam_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
@@ -120,10 +125,9 @@ describe EcsDeployCli::Runner do
             puts message
           end
 
-          expect(mock_iam_client).to receive(:get_role).with({ role_name: 'ecsInstanceRole' }) do
+          expect(mock_iam_client).to receive(:get_role).at_least(:once) do
             raise Aws::IAM::Errors::NoSuchEntity.new(nil, 'some')
           end
-
 
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:iam_client).at_least(:once).and_return(mock_iam_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
@@ -138,9 +142,24 @@ describe EcsDeployCli::Runner do
             puts message
           end
 
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:cwl_client).at_least(:once).and_return(mock_cwl_client)
           expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
 
           expect { subject.setup! }.to output(/Cluster already created, skipping./).to_stdout
+        end
+
+        it 'creates the keypair if not there' do
+          expect(mock_ec2_client).to receive(:describe_key_pairs) do
+            raise Aws::EC2::Errors::InvalidKeyPairNotFound.new(nil, 'some')
+          end
+
+          expect(mock_ec2_client).to receive(:create_key_pair) { raise 'created keypair' }
+
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ec2_client).at_least(:once).and_return(mock_ec2_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:iam_client).at_least(:once).and_return(mock_iam_client)
+          expect_any_instance_of(EcsDeployCli::Runners::Base).to receive(:ecs_client).at_least(:once).and_return(mock_ecs_client)
+
+          expect { subject.setup! }.to raise_error('created keypair')
         end
       end
 
