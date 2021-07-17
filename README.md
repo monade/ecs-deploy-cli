@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/monade/ecs-deploy-cli.svg?branch=master)](https://travis-ci.org/monade/ecs-deploy-cli)
+[![Build Status](https://travis-ci.com/monade/ecs-deploy-cli.svg?branch=master)](https://travis-ci.com/monade/ecs-deploy-cli)
 [![Gem Version](https://badge.fury.io/rb/ecs_deploy_cli.svg)](https://badge.fury.io/rb/ecs_deploy_cli)
 
 # ECS Deploy CLI
