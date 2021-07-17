@@ -53,7 +53,7 @@ module EcsDeployCli
 
       def setup_services!(services, resolved_tasks:)
         services.each do |service_name, service_definition|
-          existing_services = ecs_client.describe_services(cluster: config[:cluster], services: [service_name]).to_h[:services].filter { |s| s[:status] != 'INACTIVE' }
+          existing_services = ecs_client.describe_services(cluster: config[:cluster], services: [service_name]).to_h[:services].select { |s| s[:status] != 'INACTIVE' }
           if existing_services.any?
             EcsDeployCli.logger.info "Service #{service_name} already created, skipping."
             next
@@ -124,7 +124,7 @@ module EcsDeployCli
       def cluster_exists?
         clusters = ecs_client.describe_clusters(clusters: [config[:cluster]]).to_h[:clusters]
 
-        clusters.filter { |c| c[:status] != 'INACTIVE' }.length == 1
+        clusters.count { |c| c[:status] != 'INACTIVE' } == 1
       end
 
       def ensure_ecs_roles_exists!
