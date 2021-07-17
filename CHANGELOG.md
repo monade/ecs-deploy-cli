@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project made by Monade Team are documented in this file. For info refer to team@monade.io
 
+## [0.5.1] - 2021-07-18
+### Fixed
+- Broken compatibility with ruby 2.5
+
 ## [0.5.0] - 2021-07-16
 ### Added
 - Command `setup` now create the keypair if it's missing
