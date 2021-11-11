@@ -25,13 +25,13 @@ So, why not creating a DSL built on top of our favourite language? <3
 
 You can install this gem globally
 ```bash
-  $ gem install ecs-deploy-cli
+  $ gem install ecs_deploy_cli
 ```
 
 Or add the gem to your Gemfile:
 
 ```ruby
-  gem 'ecs-deploy-cli'
+  gem 'ecs_deploy_cli'
 ```
 
 ## Usage
